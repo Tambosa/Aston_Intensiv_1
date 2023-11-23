@@ -20,7 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var viewModel: MainViewModel
-
+    private var currentSong: Int = -1
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -40,10 +40,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViewModel() {
         viewModel.state.observe(this) { state ->
-            launchService(
-                MusicService.Actions.PLAY.toString(),
-                state,
-            )
+            if (currentSong != state.musicList[state.position].id) {
+                currentSong = state.musicList[state.position].id
+                launchService(MusicService.Actions.LOAD.toString(), state)
+                if (state.isPlaying) {
+                    launchService(MusicService.Actions.PLAY.toString(), state)
+                }
+            } else {
+                launchService(MusicService.Actions.PLAY.toString(), state)
+            }
+
             initSongInfo(state.musicList[state.position])
             updatePlayButton(state.isPlaying)
         }
@@ -65,10 +71,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun initButtons() {
         binding.btnPlay.setOnClickListener {
-            launchService(
-                MusicService.Actions.PLAY.toString(),
-                viewModel.state.value,
-            )
             viewModel.isPlayingChanged()
         }
         binding.btnNext.setOnClickListener {

@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.aston_intensiv_1.MainActivity.Companion.ARTIST_NAME
 import com.example.aston_intensiv_1.MainActivity.Companion.IS_PLAYING
@@ -27,16 +28,17 @@ class MusicService : Service() {
         when (intent?.action) {
             Actions.START_SERVICE.toString() -> onStartService()
             Actions.STOP_SERVICE.toString() -> onStopService()
+            Actions.LOAD.toString() -> onLoad(intent)
             Actions.PLAY.toString() -> onPlay(intent)
         }
         return super.onStartCommand(intent, flags, startId)
     }
 
-    private fun onPlay(intent: Intent) {
-        val songIdNullable = intent.extras?.getInt(SONG_ID)
-        val isPlayingNullable = intent.extras?.getBoolean(IS_PLAYING)
-        let2(songIdNullable, isPlayingNullable) { songId, isPlaying ->
-            initPlayer(songId, isPlaying)
+    private fun onLoad(intent: Intent) {
+        Log.d("@@@", "onLoad: ")
+        val songId = intent.extras?.getInt(SONG_ID)
+        songId?.let {
+            loadNewSong(songId)
         }
 
         val songNameNullable = intent.extras?.getString(SONG_NAME)
@@ -46,16 +48,15 @@ class MusicService : Service() {
         }
     }
 
-    private fun initPlayer(songId: Int, isPlaying: Boolean) {
-        handleNewSong(songId)
-        if (isPlaying) {
-            player.start()
-        } else {
-            player.pause()
+    private fun onPlay(intent: Intent) {
+        Log.d("@@@", "onPlay: ")
+        val isPlaying = intent.extras?.getBoolean(IS_PLAYING)
+        isPlaying?.let {
+            if (it) player.start() else player.pause()
         }
     }
 
-    private fun handleNewSong(songId: Int) {
+    private fun loadNewSong(songId: Int) {
         player.stop()
         player.reset()
         player = MediaPlayer.create(this, songId)
@@ -103,6 +104,7 @@ class MusicService : Service() {
     enum class Actions {
         START_SERVICE,
         STOP_SERVICE,
+        LOAD,
         PLAY
     }
 }
