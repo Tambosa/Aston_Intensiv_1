@@ -30,22 +30,30 @@ class MainViewModel @Inject constructor(private val repo: MusicRepository) : Vie
         }
     }
 
-    fun playNext(isPlaying: Boolean) {
-        _state.value?.let {
-            if (it.position + 1 >= it.musicList.size) {
-                _state.postValue(it.copy(position = 0, isPlaying = isPlaying))
-            } else {
-                _state.postValue(it.copy(position = it.position + 1, isPlaying = isPlaying))
+    fun isPlayingChanged() {
+        viewModelScope.launch {
+            _state.value?.let {
+                _state.postValue(it.copy(isPlaying = !it.isPlaying))
             }
         }
     }
 
-    fun playPrevious(isPlaying: Boolean) {
+    fun getNextSong() {
+        _state.value?.let {
+            if (it.position + 1 >= it.musicList.size) {
+                _state.postValue(it.copy(position = 0))
+            } else {
+                _state.postValue(it.copy(position = it.position + 1))
+            }
+        }
+    }
+
+    fun getPreviousSong() {
         _state.value?.let {
             if (it.position - 1 < 0) {
-                _state.postValue(it.copy(position = it.musicList.size - 1, isPlaying = isPlaying))
+                _state.postValue(it.copy(position = it.musicList.size - 1))
             } else {
-                _state.postValue(it.copy(position = it.position - 1, isPlaying = isPlaying))
+                _state.postValue(it.copy(position = it.position - 1))
             }
         }
     }

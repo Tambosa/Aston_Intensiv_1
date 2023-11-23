@@ -1,21 +1,24 @@
 package com.example.aston_intensiv_1
 
+import android.Manifest
+import android.content.Intent
 import android.graphics.BitmapFactory
-import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.ViewModelProvider
 import com.example.aston_intensiv_1.databinding.ActivityMainBinding
 import com.example.aston_intensiv_1.domain.MainState
 import com.example.aston_intensiv_1.domain.Song
 import com.example.aston_intensiv_1.presentation.MainViewModel
+import com.example.aston_intensiv_1.service.MusicService
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private lateinit var player: MediaPlayer
     private lateinit var viewModel: MainViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,37 +26,28 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+        checkPermission()
+        launchService(
+            action = MusicService.Actions.START_SERVICE.toString(),
+        )
+        initViewModel()
     }
 
     override fun onStart() {
         super.onStart()
-        initViewModel()
         initButtons()
-        viewModel.getState()
     }
 
     private fun initViewModel() {
         viewModel.state.observe(this) { state ->
-            initPlayer(state)
-            updatePlayButton()
+            launchService(
+                MusicService.Actions.PLAY.toString(),
+                state,
+            )
             initSongInfo(state.musicList[state.position])
+            updatePlayButton(state.isPlaying)
         }
-    }
-
-    private fun initPlayer(state: MainState) {
-        if (!this::player.isInitialized) {
-            player = MediaPlayer.create(this, state.musicList[state.position].id)
-            player.setOnCompletionListener {
-                viewModel.playNext(player.isPlaying)
-            }
-        } else {
-            player.stop()
-            player.reset()
-            player = MediaPlayer.create(this, state.musicList[state.position].id)
-            if (state.isPlaying) {
-                player.start()
-            }
-        }
+        viewModel.getState()
     }
 
     private fun initSongInfo(song: Song) {
@@ -71,23 +65,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun initButtons() {
         binding.btnPlay.setOnClickListener {
-            if (player.isPlaying) {
-                player.pause()
-            } else {
-                player.start()
-            }
-            updatePlayButton()
+            launchService(
+                MusicService.Actions.PLAY.toString(),
+                viewModel.state.value,
+            )
+            viewModel.isPlayingChanged()
         }
         binding.btnNext.setOnClickListener {
-            viewModel.playNext(player.isPlaying)
+            viewModel.getNextSong()
         }
         binding.btnPrevious.setOnClickListener {
-            viewModel.playPrevious(player.isPlaying)
+            viewModel.getPreviousSong()
         }
     }
 
-    private fun updatePlayButton() {
-        if (player.isPlaying) {
+    private fun updatePlayButton(isPlaying: Boolean) {
+        if (isPlaying) {
             binding.btnPlay.background = ResourcesCompat.getDrawable(
                 resources,
                 R.drawable.baseline_pause_circle_24,
@@ -103,7 +96,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        player.release()
+        killService()
         super.onDestroy()
+    }
+
+    private fun launchService(action: String, state: MainState? = null) {
+        Intent(applicationContext, MusicService::class.java).also {
+            it.action = action
+            if (state != null) {
+                it.putExtra(SONG_NAME, state.musicList[state.position].name)
+                it.putExtra(ARTIST_NAME, state.musicList[state.position].artist)
+                it.putExtra(SONG_ID, state.musicList[state.position].id)
+                it.putExtra(IS_PLAYING, state.isPlaying)
+            }
+            startService(it)
+        }
+    }
+
+    private fun killService() {
+        Intent(applicationContext, MusicService::class.java).also {
+            it.action = MusicService.Actions.STOP_SERVICE.toString()
+            startService(it)
+        }
+    }
+
+    private fun checkPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                0
+            )
+        }
+    }
+
+    companion object {
+        const val SONG_NAME = "song name"
+        const val ARTIST_NAME = "artist name"
+        const val SONG_ID = "song id"
+        const val IS_PLAYING = "is playing"
     }
 }
