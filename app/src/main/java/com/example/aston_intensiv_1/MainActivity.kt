@@ -27,9 +27,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         checkPermission()
-        launchService(
-            action = MusicService.Actions.START_SERVICE.toString(),
-        )
         initViewModel()
     }
 
@@ -53,7 +50,12 @@ class MainActivity : AppCompatActivity() {
             initSongInfo(state.musicList[state.position])
             updatePlayButton(state.isPlaying)
         }
-        viewModel.getState()
+        if (viewModel.state.value == null) {
+            viewModel.getState()
+            launchService(
+                action = MusicService.Actions.START_SERVICE.toString(),
+            )
+        }
     }
 
     private fun initSongInfo(song: Song) {
@@ -97,11 +99,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        killService()
-        super.onDestroy()
-    }
-
     private fun launchService(action: String, state: MainState? = null) {
         Intent(applicationContext, MusicService::class.java).also {
             it.action = action
@@ -111,13 +108,6 @@ class MainActivity : AppCompatActivity() {
                 it.putExtra(SONG_ID, state.musicList[state.position].id)
                 it.putExtra(IS_PLAYING, state.isPlaying)
             }
-            startService(it)
-        }
-    }
-
-    private fun killService() {
-        Intent(applicationContext, MusicService::class.java).also {
-            it.action = MusicService.Actions.STOP_SERVICE.toString()
             startService(it)
         }
     }

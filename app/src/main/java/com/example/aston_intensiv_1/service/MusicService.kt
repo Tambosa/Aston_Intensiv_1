@@ -23,6 +23,7 @@ const val MUSIC_NOTIFICATION_CHANNEL = "Music"
 class MusicService : Service() {
 
     private lateinit var player: MediaPlayer
+    private var currentSong: Int = -1
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -35,9 +36,9 @@ class MusicService : Service() {
     }
 
     private fun onLoad(intent: Intent) {
-        Log.d("@@@", "onLoad: ")
         val songId = intent.extras?.getInt(SONG_ID)
-        songId?.let {
+        if (currentSong != songId && songId != null) {
+            currentSong = songId
             loadNewSong(songId)
         }
 
@@ -49,10 +50,13 @@ class MusicService : Service() {
     }
 
     private fun onPlay(intent: Intent) {
-        Log.d("@@@", "onPlay: ")
         val isPlaying = intent.extras?.getBoolean(IS_PLAYING)
         isPlaying?.let {
-            if (it) player.start() else player.pause()
+            if (it) {
+                player.start()
+            } else {
+                player.pause()
+            }
         }
     }
 
